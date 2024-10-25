@@ -9,15 +9,23 @@ import init_path
 import numpy as np
 import redis
 from easydict import EasyDict
+import pyzed.sl as sl
 
 
 from deoxys_vision.networking.camera_redis_interface import CameraRedisPubInterface
-from deoxys_vision.camera.k4a_interface import K4aInterface
+# from deoxys_vision.camera.k4a_interface import K4aInterface
+from deoxys_vision.camera.zed_interface import ZEDInterface
 from deoxys_vision.camera.rs_interface import RSInterface
 from deoxys_vision.utils.img_utils import preprocess_color, preprocess_depth
 from deoxys_vision.utils.camera_utils import assert_camera_ref_convention, get_camera_info
 
+# 0 is right camera, 1 is left camera
 
+ZEDID2SERIAL = {
+    0: 24013089,
+    1: 25047636,
+}
+SKIP_PREPROCESS = True
 def main():
     parser = argparse.ArgumentParser()
 
@@ -102,6 +110,11 @@ def main():
         camera_interface = RSInterface(
             device_id=camera_id, color_cfg=color_cfg, depth_cfg=depth_cfg, pc_cfg=pc_cfg
         )
+    elif camera_info.camera_type == "zed":
+        devices = sl.Camera.get_device_list()
+        for device in devices:
+            assert ZEDID2SERIAL[device.id] == device.serial_number, f"device mismatch"
+        camera_interface = ZEDInterface(device_id=camera_id)
 
     camera_interface.start()
     print("Starting")
@@ -157,7 +170,9 @@ def main():
             # img_info["distortion"]["color"] = camera_interface.get_color_distortion()
             intrinsics_matrix = camera_interface.get_color_intrinsics(mode="matrix")
             color_distortion = camera_interface.get_color_distortion()  
-            
+            # diff = time.time() - curr_t
+            # print(f"took {diff} seconds to do color-related processing!")
+            # not a bottleneck either
             if camera_config.use_rec:
                 if camera_info.camera_type == "rs":
                     if camera_id == 0:
@@ -177,7 +192,7 @@ def main():
                                             [ 0.00000000e+00]])
                         
                     else:
-                        color_disotortion = np.array(
+                        color_distortion = np.array(
                             [[-1.03494286e+01],
                             [ 1.81229044e+02],
                             [-1.33669038e-03],

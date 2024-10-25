@@ -2,7 +2,7 @@
 from easydict import EasyDict
 
 def assert_camera_ref_convention(camera_reference, 
-                       available_camera_types=["rs", "k4a"]):
+                       available_camera_types=["rs", "k4a", "zed"]):
     """Check the camera reference convention. You need to check every camera separately.
 
     Args:
